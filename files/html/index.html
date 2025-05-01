@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<style>
+  .text-block {
+    position: relative;
+    display: inline;
+    font-size: 1.5em;
+    bottom: 15px;
+    right: 12px;
+    background-color: white;
+    color: black;
+  }
+  .flexcontainer {
+    min-width: 400px;
+    width: 40%; 
+    margin-left: auto; 
+    margin-right: auto;
+  }
+</style>
+<html lang="en">
+  <head>
+    <link rel="stylesheet" href="./files/css/chessboard-1.0.0.min.css">
+  </head>
+  <body>
+    <button type="button" onclick="resetGame()">Reset Game</button>
+    <button type="button" onclick="onPressColor('W1')">White (Team1)</button>
+    <button type="button" onclick="onPressColor('B1')">Black (Team1)</button>
+    <button type="button" onclick="onPressColor('W2')">White (Team2)</button>
+    <button type="button" onclick="onPressColor('B2')">Black (Team2)</button>
+    <div style="position:relative; display: flex; flex-direction: row; align-items: center; flex-wrap: wrap; margin: 0 auto 0 auto; width: 90%;">
+      <div id="board1" class="flexcontainer"></div>
+      <div id="board2" style="margin-left: 50px;" class="flexcontainer"></div>
+    </div>
+  </body>
+</html>
+<script src="./files/js/jquery-3.7.1.min.js"></script>
+<script src="./files/js/chessboard-1.0.0.js"></script>
+<script>
+  const socket = new WebSocket("ws://localhost:9091");
+  var board1 = null;
+  var color = 'W1';
+  var fen1 = null;
+
+  socket.addEventListener("message", (event) => {
+    console.log(event.data);
+
+    fen1 = event.data;
+    board1.position(event.data);
+  });
+
+  function onDragStart (source, piece, position, orientation) {
+    console.log(source);
+
+    if ((orientation === 'white' && piece.search(/^w/) === -1) ||
+        (orientation === 'black' && piece.search(/^b/) === -1)) {
+      return false
+    }
+  }
+
+  function onPressColor(chosen_color) {
+    color = chosen_color;
+
+    const b1 = document.getElementById("board1");
+    const b2 = document.getElementById("board2");
+
+    console.log(color);
+    
+    if(color[1] == '1') {
+      board1.orientation('white');
+      board2.orientation('black');
+    } else {
+      board1.orientation('black');
+      board2.orientation('white');
+    }
+  }
+
+  function resetGame() {
+    socket.send("Reset Game");
+  };
+
+  function onDrop(source, target, piece, newPos, oldPos, orientation) {
+    socket.send(color + ';' + source + ';' + target + ';' + piece);
+  };
+
+  var config_start = {
+    draggable: true,
+    dropOffBoard: 'snapback',
+    position: 'start',
+    sparePieces: true,
+    onDragStart: onDragStart,
+    onDrop: onDrop,
+  };
+
+  board1 = Chessboard('board1', config_start);
+  board2 = Chessboard('board2', config_start);
+  board2.orientation('black');
+</script>
