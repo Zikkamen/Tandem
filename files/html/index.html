@@ -21,10 +21,11 @@
   <body>
     <div style="max-width: 2560px;">
       <button type="button" onclick="resetGame()">Reset Game</button>
-      <button type="button" onclick="onPressColor('W;1')">White (Team1)</button>
-      <button type="button" onclick="onPressColor('B;2')">Black (Team1)</button>
-      <button type="button" onclick="onPressColor('W;2')">White (Team2)</button>
-      <button type="button" onclick="onPressColor('B;1')">Black (Team2)</button>
+      <button type="button" onclick="onPressColor('W1')">White (Team1)</button>
+      <button type="button" onclick="onPressColor('B2')">Black (Team1)</button>
+      <button type="button" onclick="onPressColor('W2')">White (Team2)</button>
+      <button type="button" onclick="onPressColor('B1')">Black (Team2)</button>
+      <h2 id="current_team_display" style="margin: 0 auto 0  auto; width: fit-content;"></h2>
       <div style="position:relative; display: flex; flex-direction: row; align-items: center; flex-wrap: wrap; margin: 0 auto 0 auto; width: 90%;">
         <div id="mainBoard" class="flexcontainer" style="min-width: 400px; width: 40%;"></div>
         <div id="secondBoard" style="margin-left: 20px; min-width: 300px; width: 30%;" class="flexcontainer"></div>
@@ -40,33 +41,52 @@
   var secondBoard = null;
   var color = 'W';
   var board = '1';
-  var fen1 = null;
-  var fen2 = null;
+  var mainBoardData = null;
+  var secondBoardData = null;
   var promotion_piece = null;
 
   function update_boards() {
-    if(board == '1') {
-      mainBoard.position(fen1);
-      secondBoard.position(fen2);
+    mainBoard.position(mainBoardData["fen"]);
+    secondBoard.position(secondBoardData["fen"]);
+
+    let spare_main_white = mainBoardData["white_sp"];
+    let spare_main_black = mainBoardData["black_sp"];
+    let spare_second_white = secondBoardData["white_sp"];
+    let spare_second_black = secondBoardData["black_sp"];
+
+    let spare_pieces_main = document.getElementById("mainBoard").getElementsByClassName("spare-piece-count");
+    let spare_pieces_seco = document.getElementById("secondBoard").getElementsByClassName("spare-piece-count");
+
+    if(color == 'W') {
+      update_spare_pieces(spare_pieces_main, spare_main_black, spare_main_white);
+      update_spare_pieces(spare_pieces_seco, spare_second_white, spare_second_black);
     } else {
-      mainBoard.position(fen2);
-      secondBoard.position(fen1);
+      update_spare_pieces(spare_pieces_main, spare_main_white, spare_main_black);
+      update_spare_pieces(spare_pieces_seco, spare_second_black, spare_second_white);
+    }
+  }
+
+  function update_spare_pieces(spare_pieces, sp1, sp2) {
+    for(var i=0; i<5; i++) {
+      spare_pieces[i].innerText = sp1[i];
     }
 
-    let spare_pieces = document.getElementById("mainBoard").getElementsByClassName("spare-piece-count");
-
-    for(var i=0; i<spare_pieces.length; i++) {
-      spare_pieces[i].innerText = i;
-      console.log(spare_pieces[i], i);
+    for(var i=0; i<5; i++) {
+      spare_pieces[i+5].innerText = sp2[i];
     }
   }
 
   socket.addEventListener("message", (event) => {
-    let json = JSON.parse(event.data);
     console.log(event.data);
+    let json = JSON.parse(event.data);
 
-    fen1 = json["board_1"];
-    fen2 = json["board_2"];
+    if(board == '1') {
+      mainBoardData = JSON.parse(json["board_1"]);
+      secondBoardData = JSON.parse(json["board_2"]);
+    } else {
+      mainBoardData = JSON.parse(json["board_2"]);
+      secondBoardData = JSON.parse(json["board_1"]);
+    }
 
     update_boards();
   });
@@ -74,7 +94,7 @@
   function onDragStart1 (source, piece, position, orientation) {
     if ((orientation === 'white' && piece.search(/^w/) === -1) ||
         (orientation === 'black' && piece.search(/^b/) === -1)) {
-      //return false
+      return false
     }
   }
 
@@ -86,16 +106,34 @@
   }
 
   function onPressColor(chosen_side) {
-    board = chosen_side[2];
-    color = chosen_side[0];
+    if(board != chosen_side[1]) {
+      let tmp = mainBoardData;
+      mainBoardData = secondBoardData;
+      secondBoardData = tmp;
+    }
 
-    const b1 = document.getElementById("mainBoard");
-    const b2 = document.getElementById("secondBoard");
+    switch(chosen_side) {
+      case "W1":
+        document.getElementById("current_team_display").innerText = "Team 1 (White)";
+        break;
+      case "W2":
+        document.getElementById("current_team_display").innerText = "Team 2 (White)";
+        break;
+      case "B2":
+        document.getElementById("current_team_display").innerText = "Team 1 (Black)";
+        break;
+      default:
+        document.getElementById("current_team_display").innerText = "Team 2 (Black)";
+        break;
+    }
+
+    color = chosen_side[0];
+    board = chosen_side[1];
     
     if(color == 'W') {
       mainBoard.orientation('white');
       secondBoard.orientation('black');
-    } else {
+    } else if(color == 'B') {
       mainBoard.orientation('black');
       secondBoard.orientation('white');
     }
@@ -130,6 +168,7 @@
     onDragStart: onDragStart2,
   };
 
+  document.getElementById("current_team_display").innerText = "Team 1 (White)";
   mainBoard = Chessboard('mainBoard', config_1);
   secondBoard = Chessboard('secondBoard', config_2);
   secondBoard.orientation('black');

@@ -18,36 +18,109 @@ use serde_json::json;
 use chess::{Board, Square, ChessMove, Piece, Color, Rank, BoardStatus};
 use crate::game_server::message_queue::MessageQueue;
 
-pub struct ChessBoard {
-    pub boards: [Board; 2],
+pub struct ChessGame {
+    pub board: Board,
+    pub white_sp: [i32; 5],
+    pub black_sp: [i32; 5],
 }
 
-impl ChessBoard {
+impl ChessGame {
     pub fn new() -> Self {
-        ChessBoard {
-            boards: [Board::default(), Board::default()],
+        ChessGame {
+            board: Board::default(),
+            white_sp: [0; 5],
+            black_sp: [0; 5],
+        }
+    }
+
+    pub fn to_string(&self) -> String {
+        json!({
+            "fen": self.board.to_string(),
+            "white_sp": self.white_sp,
+            "black_sp": self.black_sp,
+        }).to_string()
+    }
+
+    pub fn add_piece(&mut self, color: &Color, piece: Piece) {
+        let mut sp_array = match color {
+            Color::Black => &mut self.white_sp,
+            _ => &mut self.black_sp,
+        };
+
+        let i = match piece {
+            Piece::Queen => 0,
+            Piece::Rook => 1,
+            Piece::Bishop => 2,
+            Piece::Knight => 3,
+            Piece::Pawn => 4,
+            _ => return,
+        };
+
+        sp_array[i] += 1;
+    }
+
+    pub fn decrease_count(&mut self, color: &Color, piece: Piece) -> bool {
+        let mut sp_array = match color {
+            Color::White => &mut self.white_sp,
+            _ => &mut self.black_sp,
+        };
+
+        let i = match piece {
+            Piece::Queen => 0,
+            Piece::Rook => 1,
+            Piece::Bishop => 2,
+            Piece::Knight => 3,
+            Piece::Pawn => 4,
+            _ => return false,
+        };
+
+        if sp_array[i] <= 0 {
+            return false;
+        }
+
+        sp_array[i] -= 1;
+
+        true
+    }
+}
+
+pub struct TandemGame {
+    pub games: [ChessGame; 2],
+}
+
+impl TandemGame {
+    pub fn new() -> Self {
+        TandemGame {
+            games: [ChessGame::new(), ChessGame::new()],
         }
     }
 
     pub fn get_fen(&self) -> String {
         json!({
-            "board_1": self.boards[0].to_string(),
-            "board_2": self.boards[1].to_string(),
+            "board_1": self.games[0].to_string(),
+            "board_2": self.games[1].to_string(),
         }).to_string()
     }
 
     pub fn reset(&mut self) {
         for i in 0..2 {
-            self.boards[i] = Board::default();
+            self.games[i].board = Board::default();
         }
     }
 
     pub fn move_piece(&mut self, tandem_move: &TandemMove) -> bool {
         println!("{:?}", tandem_move);
+        if tandem_move.board <= 0 {
+            return false;
+        }
+
         let b_ind = (tandem_move.board - 1) as usize;
         let o_ind = (b_ind + 1) % 2;
 
-        if self.boards[b_ind].side_to_move() != tandem_move.color {
+        let board = self.games[b_ind].board;
+        let other_board = self.games[o_ind].board;
+
+        if board.side_to_move() != tandem_move.color {
             return false;
         }
 
@@ -57,7 +130,7 @@ impl ChessBoard {
         };
 
         if tandem_move.source == "spare" {
-            let _ = match self.boards[b_ind].piece_on(target) {
+            let _ = match board.piece_on(target) {
                 Some(_) => return false,
                 None => (),
             };
@@ -90,10 +163,16 @@ impl ChessBoard {
                 }
             }
 
-            self.boards[b_ind] = match set_piece_on_board(&self.boards[b_ind], piece, color, target) {
+            let board_new = match set_piece_on_board(&board, piece, color, target) {
                 Some(v) => v,
                 None => return false,
             };
+
+            if !self.games[b_ind].decrease_count(&color, piece) {
+                return false;
+            }
+
+            self.games[b_ind].board = board_new;
 
             return true;
         }
@@ -102,12 +181,14 @@ impl ChessBoard {
             Some(v) => v,
             None => return false,
         };
-        let piece_source = match self.boards[o_ind].piece_on(source) {
+        let piece_source = match board.piece_on(source) {
             Some(v) => v,
             None => return false,
         };
         let rank = target.get_rank() as u8;
         let is_promotion = piece_source == Piece::Pawn && (rank == 0 || rank == 7);
+
+        println!("Is Promotion: {}", is_promotion);
 
         let promotion_target_op = Square::from_string(tandem_move.promotion.clone());
         let mut promotion_piece_op = None;
@@ -115,9 +196,9 @@ impl ChessBoard {
         if is_promotion {
             match promotion_target_op {
                 Some(v) =>  {
-                    promotion_piece_op = self.boards[o_ind].piece_on(v);
+                    promotion_piece_op = other_board.piece_on(v);
 
-                    match self.boards[o_ind].color_on(v) {
+                    match other_board.color_on(v) {
                         Some(v) => {
                             if v != tandem_move.color {
                                 return false;
@@ -132,7 +213,7 @@ impl ChessBoard {
 
         let chess_move = ChessMove::new(source, target, promotion_piece_op);
 
-        if !self.boards[b_ind].legal(chess_move) {
+        if !board.legal(chess_move) {
             return false;
         }
 
@@ -144,7 +225,7 @@ impl ChessBoard {
 
             println!("Checking Promotion valid");
 
-            let board_other = match self.boards[o_ind].clear_square(promotion_target) {
+            let board_other = match other_board.clear_square(promotion_target) {
                 Some(v) => v,
                 None => return false,
             };
@@ -154,11 +235,16 @@ impl ChessBoard {
                 None => return false,
             };
 
-            self.boards[o_ind] = board_other;
+            self.games[o_ind].board = board_other;
         }
 
+        match board.piece_on(target) {
+            Some(v) => self.games[o_ind].add_piece(&tandem_move.color, v),
+            None => (),
+        };
+
         println!("{:?} {:?}", source, target);
-        self.boards[b_ind] = self.boards[b_ind].make_move_new(chess_move);
+        self.games[b_ind].board = board.make_move_new(chess_move);
 
         true
     }
@@ -208,14 +294,14 @@ fn set_piece_on_board(board: &Board, piece: Piece, color: Color, target: Square)
 }
 
 #[derive(Clone)]
-pub struct ChessBoardInterface {
-    board: Arc<RwLock<ChessBoard>>,
+pub struct TandemGameInterface {
+    board: Arc<RwLock<TandemGame>>,
 }
 
-impl ChessBoardInterface {
+impl TandemGameInterface {
     pub fn new() -> Self {
-        ChessBoardInterface {
-            board: Arc::new(RwLock::new(ChessBoard::new())),
+        TandemGameInterface {
+            board: Arc::new(RwLock::new(TandemGame::new())),
         }
     }
 
@@ -271,7 +357,7 @@ impl TandemMove {
 pub fn start_server() {
     thread::spawn(|| {
         let server = TcpListener::bind("0.0.0.0:9091").unwrap();
-        let board_og = ChessBoardInterface::new();
+        let board_og = TandemGameInterface::new();
         let client_map = Arc::new(RwLock::new(HashMap::<usize, MessageQueue<String>>::new()));
         let mut i = 0;
 
