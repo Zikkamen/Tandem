@@ -102,7 +102,14 @@
     }
   }
 
+  var last_event = null;
   socket.addEventListener("message", (event) => {
+    if(event.data == last_event) {
+      return;
+    }
+
+    last_event = event.data;
+
     console.log(event.data);
     let json = JSON.parse(event.data);
 
