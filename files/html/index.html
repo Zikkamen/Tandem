@@ -58,8 +58,8 @@
   var promotion_piece = null;
 
   function update_boards() {
-    mainBoard.position(mainBoardData["fen"]);
-    secondBoard.position(secondBoardData["fen"]);
+    mainBoard.position(mainBoardData["fen"], false);
+    secondBoard.position(secondBoardData["fen"], false);
 
     let spare_main_white = mainBoardData["white_sp"];
     let time_main_white = mainBoardData["white_time"];

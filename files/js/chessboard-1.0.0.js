@@ -907,6 +907,7 @@
     // -------------------------------------------------------------------------
 
     function animateSquareToSquare (src, dest, piece, completeFn) {
+      return;
       // get information about the source and destination squares
       var $srcSquare = $('#' + squareElsIds[src])
       var srcSquarePosition = $srcSquare.offset()

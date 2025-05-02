@@ -197,6 +197,7 @@ impl TandemGame {
     }
 
     pub fn move_piece(&mut self, tandem_move: &TandemMove) -> bool {
+        println!("{:?}", tandem_move);
         self.started = true;
         self.synchronize_time();
 
@@ -221,6 +222,16 @@ impl TandemGame {
         let target = match Square::from_string(tandem_move.target.clone()) {
             Some(v) => v,
             None => return false,
+        };
+
+        match board.piece_on(target) {
+            Some(v) =>{ 
+                if v == Piece::King {
+                    println!("Tried to capture King");
+                    return false;
+                }
+            },
+            None => (),
         };
 
         if tandem_move.source == "spare" {
