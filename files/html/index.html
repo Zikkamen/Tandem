@@ -13,6 +13,10 @@
     margin-left: auto; 
     margin-right: auto;
   }
+  .timings {
+    margin-top: 0px;
+    margin-bottom: 0px;
+  }
 </style>
 <html lang="en">
   <head>
@@ -27,8 +31,16 @@
       <button type="button" onclick="onPressColor('B1')">Black (Team2)</button>
       <h2 id="current_team_display" style="margin: 0 auto 0  auto; width: fit-content;"></h2>
       <div style="position:relative; display: flex; flex-direction: row; align-items: center; flex-wrap: wrap; margin: 0 auto 0 auto; width: 90%;">
-        <div id="mainBoard" class="flexcontainer" style="min-width: 400px; width: 40%;"></div>
-        <div id="secondBoard" style="margin-left: 20px; min-width: 300px; width: 30%;" class="flexcontainer"></div>
+        <div id="divMainBoard" class="flexcontainer" style="position: relative; min-width: 400px; width: 40%;">
+          <p style="position: absolute; top: 3%; font-size: 2vw;" class="timings">5:00</p>
+          <p style="position: absolute; bottom: 3%; font-size: 2vw;" class="timings">5:00</p>
+          <div id="mainBoard"></div>
+        </div>
+        <div id="divSecondBoard" class="flexcontainer" style="position: relative; margin-left: 10px; min-width: 300px; width: 30%; height: fit-content;">
+          <p style="position: absolute; top: 2%; font-size: 2vw; float: left;" class="timings">5:00</p>
+          <p style="position: absolute; bottom: 2%; font-size: 2vw; float: left;" class="timings">5:00</p>
+          <div id="secondBoard"></div>
+        </div>
       </div>
     </div>
   </body>
@@ -50,17 +62,31 @@
     secondBoard.position(secondBoardData["fen"]);
 
     let spare_main_white = mainBoardData["white_sp"];
+    let time_main_white = mainBoardData["white_time"];
     let spare_main_black = mainBoardData["black_sp"];
+    let time_main_black = mainBoardData["black_time"];
     let spare_second_white = secondBoardData["white_sp"];
+    let time_second_white = secondBoardData["white_time"];
     let spare_second_black = secondBoardData["black_sp"];
+    let time_second_black = secondBoardData["black_time"];
 
     let spare_pieces_main = document.getElementById("mainBoard").getElementsByClassName("spare-piece-count");
+    let timings_main = document.getElementById("divMainBoard").getElementsByClassName("timings");
     let spare_pieces_seco = document.getElementById("secondBoard").getElementsByClassName("spare-piece-count");
+    let timings_second = document.getElementById("divSecondBoard").getElementsByClassName("timings");
 
     if(color == 'W') {
+      timings_main[0].innerText = time_main_black;
+      timings_main[1].innerText = time_main_white;
+      timings_second[0].innerText = time_second_white;
+      timings_second[1].innerText = time_second_black;
       update_spare_pieces(spare_pieces_main, spare_main_black, spare_main_white);
       update_spare_pieces(spare_pieces_seco, spare_second_white, spare_second_black);
     } else {
+      timings_main[0].innerText = time_main_white;
+      timings_main[1].innerText = time_main_black;
+      timings_second[0].innerText = time_second_black;
+      timings_second[1].innerText = time_second_white;
       update_spare_pieces(spare_pieces_main, spare_main_white, spare_main_black);
       update_spare_pieces(spare_pieces_seco, spare_second_black, spare_second_white);
     }

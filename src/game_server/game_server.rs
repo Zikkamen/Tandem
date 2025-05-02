@@ -16,12 +16,19 @@ use tungstenite::{
 use serde_json::json;
 
 use chess::{Board, Square, ChessMove, Piece, Color, Rank, BoardStatus};
+use chrono::Utc;
 use crate::game_server::message_queue::MessageQueue;
+
+static FIVE_MINUTES:i64 = 5 * 60 * 1000;
 
 pub struct ChessGame {
     pub board: Board,
     pub white_sp: [i32; 5],
     pub black_sp: [i32; 5],
+    white_time: i64,
+    black_time: i64,
+    turn: Color,
+    last_time_sum: i64,
 }
 
 impl ChessGame {
@@ -30,14 +37,49 @@ impl ChessGame {
             board: Board::default(),
             white_sp: [0; 5],
             black_sp: [0; 5],
+            white_time: FIVE_MINUTES,
+            black_time: FIVE_MINUTES,
+            turn: Color::White,
+            last_time_sum: 0,
         }
     }
 
+    pub fn should_update(&mut self) -> bool {
+        let old_time_sum = self.last_time_sum;
+        self.last_time_sum = self.white_time / 60 + self.black_time / 60;
+
+        old_time_sum != self.last_time_sum
+    }
+
+    pub fn synchronize_time(&mut self, time_diff: i64) {
+        match self.turn {
+            Color::White => self.white_time -= time_diff,
+            _ => self.black_time -= time_diff,
+        };
+
+        self.white_time = self.white_time.max(0);
+        self.black_time = self.black_time.max(0);
+    }
+
+    pub fn change_turn(&mut self) {
+        self.turn = match self.turn {
+            Color::White => Color::Black,
+            _ => Color::White,
+        };
+
+        let _ = self.should_update();
+    }
+
     pub fn to_string(&self) -> String {
+        let time_white_seconds = self.white_time / 1000;
+        let time_black_seconds = self.black_time / 1000;
+
         json!({
             "fen": self.board.to_string(),
             "white_sp": self.white_sp,
             "black_sp": self.black_sp,
+            "white_time": format!("{}:{:02}", time_white_seconds / 60, time_white_seconds % 60),
+            "black_time": format!("{}:{:02}", time_black_seconds / 60, time_black_seconds % 60),
         }).to_string()
     }
 
@@ -86,12 +128,16 @@ impl ChessGame {
 
 pub struct TandemGame {
     pub games: [ChessGame; 2],
+    started: bool,
+    last_sync: i64,
 }
 
 impl TandemGame {
     pub fn new() -> Self {
         TandemGame {
             games: [ChessGame::new(), ChessGame::new()],
+            started: false,
+            last_sync: 0,
         }
     }
 
@@ -102,13 +148,45 @@ impl TandemGame {
         }).to_string()
     }
 
+    pub fn should_update(&mut self) -> bool {
+        self.synchronize_time();
+
+        self.games[0].should_update() 
+        || self.games[1].should_update()
+    }
+
     pub fn reset(&mut self) {
         for i in 0..2 {
-            self.games[i].board = Board::default();
+            self.games[i] = ChessGame::new();
+        }
+
+        self.started = false;
+        self.last_sync = 0;
+    }
+
+    pub fn synchronize_time(&mut self) {
+        if !self.started {
+            return;
+        }
+
+        let now = Utc::now().timestamp_millis();
+
+        if self.last_sync == 0 {
+            self.last_sync = now;
+        }
+
+        let time_dif = (now - self.last_sync).max(0);
+        self.last_sync = now;
+
+        for i in 0..2 {
+            self.games[i].synchronize_time(time_dif);
         }
     }
 
     pub fn move_piece(&mut self, tandem_move: &TandemMove) -> bool {
+        self.started = true;
+        self.synchronize_time();
+
         println!("{:?}", tandem_move);
         if tandem_move.board <= 0 {
             return false;
@@ -173,6 +251,7 @@ impl TandemGame {
             }
 
             self.games[b_ind].board = board_new;
+            self.games[b_ind].change_turn();
 
             return true;
         }
@@ -244,6 +323,7 @@ impl TandemGame {
         };
 
         println!("{:?} {:?}", source, target);
+        self.games[b_ind].change_turn();
         self.games[b_ind].board = board.make_move_new(chess_move);
 
         true
@@ -272,12 +352,20 @@ fn set_piece_on_board(board: &Board, piece: Piece, color: Color, target: Square)
         None => return None,
     };
 
+    if is_mate(&board_new, piece, target, color) {
+        None
+    } else {
+        Some(board_new)
+    }
+}
+
+fn is_mate(board: &Board, piece: Piece, target: Square, color: Color) -> bool {
     let target_x = target.get_rank() as i32;
     let target_y = target.get_file() as i32;
 
     let square_king = match color {
-        Color::White => board_new.king_square(Color::Black),
-        _ => board_new.king_square(Color::White),
+        Color::White => board.king_square(Color::Black),
+        _ => board.king_square(Color::White),
     };
 
     let king_x = square_king.get_rank() as i32;
@@ -285,12 +373,7 @@ fn set_piece_on_board(board: &Board, piece: Piece, color: Color, target: Square)
 
     let close_chess = (king_x - target_x).abs().min((king_y - target_y).abs()) <= 1;
 
-    if board_new.status() == BoardStatus::Checkmate 
-    && (close_chess || piece == Piece::Knight) {
-        return None;
-    }
-
-    Some(board_new)
+    board.status() == BoardStatus::Checkmate && (close_chess || piece == Piece::Knight)
 }
 
 #[derive(Clone)]
@@ -307,6 +390,10 @@ impl TandemGameInterface {
 
     pub fn get_fen(&self) -> String {
         self.board.read().unwrap().get_fen()
+    }
+
+    pub fn should_update(&self) -> bool {
+        self.board.write().unwrap().should_update()
     }
 
     pub fn reset(&self) {
@@ -359,7 +446,21 @@ pub fn start_server() {
         let server = TcpListener::bind("0.0.0.0:9091").unwrap();
         let board_og = TandemGameInterface::new();
         let client_map = Arc::new(RwLock::new(HashMap::<usize, MessageQueue<String>>::new()));
+        let client_sync_map = client_map.clone();
+        let tandem_sync = board_og.clone();
         let mut i = 0;
+
+        thread::spawn(move || {
+            loop {
+                if tandem_sync.should_update() {
+                    for client in client_sync_map.read().unwrap().values() {
+                        client.produce(tandem_sync.get_fen());
+                    } 
+                }
+
+                thread::sleep(Duration::from_millis(50));
+            }
+        });
 
         for stream in server.incoming() {
             let board = board_og.clone();
@@ -380,7 +481,10 @@ pub fn start_server() {
                     loop {
                         let msg = msg_queue_c.consume_blocking();
 
-                        websocket_send.send(Message::Text(msg.into()));
+                        match websocket_send.send(Message::Text(msg.into())) {
+                            Ok(_) => (),
+                            Err(_) => break, 
+                        };
                     }
                 });
 
