@@ -896,7 +896,7 @@
       var html = ''
       for (var i = 0; i < pieces.length; i++) {
         html += buildPieceHTML(pieces[i], false, sparePiecesElsIds[pieces[i]])
-        html += '<p class="text-block" id="' + pieces[i] + '">0</p>'
+        html += '<p class="spare-piece-count" id="' + pieces[i] + '">0</p>'
       }
 
       return html

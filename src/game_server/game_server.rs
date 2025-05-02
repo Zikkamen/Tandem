@@ -13,33 +13,41 @@ use tungstenite::{
     Message,
 };
 
+use serde_json::json;
+
 use chess::{Board, Square, ChessMove, Piece, Color, Rank, BoardStatus};
 use crate::game_server::message_queue::MessageQueue;
 
 pub struct ChessBoard {
-    pub board: Board,
+    pub boards: [Board; 2],
 }
 
 impl ChessBoard {
     pub fn new() -> Self {
         ChessBoard {
-            board: Board::default(),
+            boards: [Board::default(), Board::default()],
         }
     }
 
     pub fn get_fen(&self) -> String {
-        self.board.to_string()
+        json!({
+            "board_1": self.boards[0].to_string(),
+            "board_2": self.boards[1].to_string(),
+        }).to_string()
     }
 
     pub fn reset(&mut self) {
-        self.board = Board::default();
+        for i in 0..2 {
+            self.boards[i] = Board::default();
+        }
     }
 
     pub fn move_piece(&mut self, tandem_move: &TandemMove) -> bool {
-        let player_color = tandem_move.color(); 
+        println!("{:?}", tandem_move);
+        let b_ind = (tandem_move.board - 1) as usize;
+        let o_ind = (b_ind + 1) % 2;
 
-        if !(self.board.side_to_move() == Color::White && player_color == 'W' 
-        || self.board.side_to_move() == Color::Black && player_color == 'B') {
+        if self.boards[b_ind].side_to_move() != tandem_move.color {
             return false;
         }
 
@@ -48,10 +56,8 @@ impl ChessBoard {
             None => return false,
         };
 
-        println!("{:?}", tandem_move);
-
         if tandem_move.source == "spare" {
-            let _ = match self.board.piece_on(target) {
+            let _ = match self.boards[b_ind].piece_on(target) {
                 Some(_) => return false,
                 None => (),
             };
@@ -84,14 +90,9 @@ impl ChessBoard {
                 }
             }
 
-            self.board = match set_piece_on_board(&self.board, piece, color, target) {
+            self.boards[b_ind] = match set_piece_on_board(&self.boards[b_ind], piece, color, target) {
                 Some(v) => v,
                 None => return false,
-            };
-
-            self.board = match self.board.null_move() {
-                Some(v) => v,
-                None => return true,
             };
 
             return true;
@@ -101,24 +102,77 @@ impl ChessBoard {
             Some(v) => v,
             None => return false,
         };
+        let piece_source = match self.boards[o_ind].piece_on(source) {
+            Some(v) => v,
+            None => return false,
+        };
+        let rank = target.get_rank() as u8;
+        let is_promotion = piece_source == Piece::Pawn && (rank == 0 || rank == 7);
 
-        let chess_move = ChessMove::new(source, target, None);
+        let promotion_target_op = Square::from_string(tandem_move.promotion.clone());
+        let mut promotion_piece_op = None;
 
-        if !self.board.legal(chess_move) {
+        if is_promotion {
+            match promotion_target_op {
+                Some(v) =>  {
+                    promotion_piece_op = self.boards[o_ind].piece_on(v);
+
+                    match self.boards[o_ind].color_on(v) {
+                        Some(v) => {
+                            if v != tandem_move.color {
+                                return false;
+                            }
+                        },
+                        None => return false,
+                    };
+                },
+                None => (),
+            };
+        }
+
+        let chess_move = ChessMove::new(source, target, promotion_piece_op);
+
+        if !self.boards[b_ind].legal(chess_move) {
             return false;
         }
 
-        println!("{:?} {:?}", source, target);
+        if is_promotion {
+            let promotion_target = match promotion_target_op {
+                Some(v) => v,
+                None => return false,
+            };
 
-        self.board = self.board.make_move_new(chess_move);
+            println!("Checking Promotion valid");
+
+            let board_other = match self.boards[o_ind].clear_square(promotion_target) {
+                Some(v) => v,
+                None => return false,
+            };
+
+            match board_other.null_move() {
+                Some(_) => (),
+                None => return false,
+            };
+
+            self.boards[o_ind] = board_other;
+        }
+
+        println!("{:?} {:?}", source, target);
+        self.boards[b_ind] = self.boards[b_ind].make_move_new(chess_move);
 
         true
     }
 }
 
 fn set_piece_on_board(board: &Board, piece: Piece, color: Color, target: Square) -> Option<Board> {
+    let target_x = target.get_rank() as i32;
+
+    if (target_x == 7 || target_x == 0) && piece == Piece::Pawn {
+        return None;
+    }
+    
     match board.set_piece(piece, color, target) {
-        Some(v) => return Some(v),
+        Some(v) => return v.null_move(),
         None => ()
     };
 
@@ -180,30 +234,37 @@ impl ChessBoardInterface {
 
 #[derive(Debug)]
 pub struct TandemMove {
-    pub player: String,
+    pub board: u8,
+    pub color: Color,
     pub source: String,
     pub target: String,
     pub piece: String,
+    pub promotion: String,
 }
 
 impl TandemMove {
     pub fn from_string(tandem_string: String) -> Option<Self> {
         let splitted = tandem_string.split(';').collect::<Vec<&str>>();
 
-        if splitted.len() != 4 {
+        if splitted.len() != 6 {
             return None;
         }
 
-        Some(TandemMove {
-            player: splitted[0].to_owned(),
-            source: splitted[1].to_owned(),
-            target: splitted[2].to_owned(),
-            piece: splitted[3].to_owned(),
-        })
-    }
+        let color = match splitted[1] {
+            "W" => Color::White,
+            _ => Color::Black,
+        };
 
-    pub fn color(&self) -> char {
-        self.player.chars().next().unwrap_or(' ')
+        let board = splitted[0].parse::<u8>().unwrap_or(1);
+
+        Some(TandemMove {
+            board: board,
+            color: color,
+            source: splitted[2].to_owned(),
+            target: splitted[3].to_owned(),
+            piece: splitted[4].to_owned(),
+            promotion: splitted[5].to_owned(),
+        })
     }
 }
 

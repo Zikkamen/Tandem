@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <style>
-  .text-block {
+  .spare-piece-count {
     position: relative;
     display: inline;
     font-size: 1.5em;
@@ -10,8 +10,6 @@
     color: black;
   }
   .flexcontainer {
-    min-width: 400px;
-    width: 40%; 
     margin-left: auto; 
     margin-right: auto;
   }
@@ -21,14 +19,16 @@
     <link rel="stylesheet" href="./files/css/chessboard-1.0.0.min.css">
   </head>
   <body>
-    <button type="button" onclick="resetGame()">Reset Game</button>
-    <button type="button" onclick="onPressColor('W1')">White (Team1)</button>
-    <button type="button" onclick="onPressColor('B1')">Black (Team1)</button>
-    <button type="button" onclick="onPressColor('W2')">White (Team2)</button>
-    <button type="button" onclick="onPressColor('B2')">Black (Team2)</button>
-    <div style="position:relative; display: flex; flex-direction: row; align-items: center; flex-wrap: wrap; margin: 0 auto 0 auto; width: 90%;">
-      <div id="board1" class="flexcontainer"></div>
-      <div id="board2" style="margin-left: 50px;" class="flexcontainer"></div>
+    <div style="max-width: 2560px;">
+      <button type="button" onclick="resetGame()">Reset Game</button>
+      <button type="button" onclick="onPressColor('W;1')">White (Team1)</button>
+      <button type="button" onclick="onPressColor('B;2')">Black (Team1)</button>
+      <button type="button" onclick="onPressColor('W;2')">White (Team2)</button>
+      <button type="button" onclick="onPressColor('B;1')">Black (Team2)</button>
+      <div style="position:relative; display: flex; flex-direction: row; align-items: center; flex-wrap: wrap; margin: 0 auto 0 auto; width: 90%;">
+        <div id="mainBoard" class="flexcontainer" style="min-width: 400px; width: 40%;"></div>
+        <div id="secondBoard" style="margin-left: 20px; min-width: 300px; width: 30%;" class="flexcontainer"></div>
+      </div>
     </div>
   </body>
 </html>
@@ -36,41 +36,71 @@
 <script src="./files/js/chessboard-1.0.0.js"></script>
 <script>
   const socket = new WebSocket("ws://localhost:9091");
-  var board1 = null;
-  var color = 'W1';
+  var mainBoard = null;
+  var secondBoard = null;
+  var color = 'W';
+  var board = '1';
   var fen1 = null;
+  var fen2 = null;
+  var promotion_piece = null;
 
-  socket.addEventListener("message", (event) => {
-    console.log(event.data);
+  function update_boards() {
+    if(board == '1') {
+      mainBoard.position(fen1);
+      secondBoard.position(fen2);
+    } else {
+      mainBoard.position(fen2);
+      secondBoard.position(fen1);
+    }
 
-    fen1 = event.data;
-    board1.position(event.data);
-  });
+    let spare_pieces = document.getElementById("mainBoard").getElementsByClassName("spare-piece-count");
 
-  function onDragStart (source, piece, position, orientation) {
-    console.log(source);
-
-    if ((orientation === 'white' && piece.search(/^w/) === -1) ||
-        (orientation === 'black' && piece.search(/^b/) === -1)) {
-      return false
+    for(var i=0; i<spare_pieces.length; i++) {
+      spare_pieces[i].innerText = i;
+      console.log(spare_pieces[i], i);
     }
   }
 
-  function onPressColor(chosen_color) {
-    color = chosen_color;
+  socket.addEventListener("message", (event) => {
+    let json = JSON.parse(event.data);
+    console.log(event.data);
 
-    const b1 = document.getElementById("board1");
-    const b2 = document.getElementById("board2");
+    fen1 = json["board_1"];
+    fen2 = json["board_2"];
 
-    console.log(color);
-    
-    if(color[1] == '1') {
-      board1.orientation('white');
-      board2.orientation('black');
-    } else {
-      board1.orientation('black');
-      board2.orientation('white');
+    update_boards();
+  });
+
+  function onDragStart1 (source, piece, position, orientation) {
+    if ((orientation === 'white' && piece.search(/^w/) === -1) ||
+        (orientation === 'black' && piece.search(/^b/) === -1)) {
+      //return false
     }
+  }
+
+  function onDragStart2 (source, piece, position, orientation) {
+    console.log("Promotion Piece selected", promotion_piece);
+    promotion_piece = source;
+
+    return false;
+  }
+
+  function onPressColor(chosen_side) {
+    board = chosen_side[2];
+    color = chosen_side[0];
+
+    const b1 = document.getElementById("mainBoard");
+    const b2 = document.getElementById("secondBoard");
+    
+    if(color == 'W') {
+      mainBoard.orientation('white');
+      secondBoard.orientation('black');
+    } else {
+      mainBoard.orientation('black');
+      secondBoard.orientation('white');
+    }
+
+    update_boards();
   }
 
   function resetGame() {
@@ -78,19 +108,29 @@
   };
 
   function onDrop(source, target, piece, newPos, oldPos, orientation) {
-    socket.send(color + ';' + source + ';' + target + ';' + piece);
+    if(source != target) {
+      socket.send(board + ';' + color + ';' + source + ';' + target + ';' + piece + ';' + promotion_piece);
+    }
   };
 
-  var config_start = {
+  var config_1 = {
     draggable: true,
     dropOffBoard: 'snapback',
     position: 'start',
     sparePieces: true,
-    onDragStart: onDragStart,
+    onDragStart: onDragStart1,
     onDrop: onDrop,
   };
 
-  board1 = Chessboard('board1', config_start);
-  board2 = Chessboard('board2', config_start);
-  board2.orientation('black');
+  var config_2 = {
+    draggable: true,
+    dropOffBoard: 'snapback',
+    position: 'start',
+    sparePieces: true,
+    onDragStart: onDragStart2,
+  };
+
+  mainBoard = Chessboard('mainBoard', config_1);
+  secondBoard = Chessboard('secondBoard', config_2);
+  secondBoard.orientation('black');
 </script>
