@@ -44,6 +44,10 @@ impl ChessGame {
         }
     }
 
+    pub fn flagged(&self) -> bool {
+        self.white_time == 0 || self.black_time == 0
+    }
+
     pub fn should_update(&mut self) -> bool {
         let old_time_sum = self.last_time_sum;
         self.last_time_sum = self.white_time / 60 + self.black_time / 60;
@@ -129,6 +133,7 @@ impl ChessGame {
 pub struct TandemGame {
     pub games: [ChessGame; 2],
     started: bool,
+    finished: bool,
     last_sync: i64,
 }
 
@@ -136,6 +141,7 @@ impl TandemGame {
     pub fn new() -> Self {
         TandemGame {
             games: [ChessGame::new(), ChessGame::new()],
+            finished: false,
             started: false,
             last_sync: 0,
         }
@@ -149,6 +155,10 @@ impl TandemGame {
     }
 
     pub fn should_update(&mut self) -> bool {
+        if self.finished {
+            return false;
+        }
+
         self.synchronize_time();
 
         self.games[0].should_update() 
@@ -161,6 +171,7 @@ impl TandemGame {
         }
 
         self.started = false;
+        self.finished = false;
         self.last_sync = 0;
     }
 
@@ -180,6 +191,8 @@ impl TandemGame {
 
         for i in 0..2 {
             self.games[i].synchronize_time(time_dif);
+
+            self.finished |= self.games[i].flagged();
         }
     }
 
@@ -187,7 +200,10 @@ impl TandemGame {
         self.started = true;
         self.synchronize_time();
 
-        println!("{:?}", tandem_move);
+        if self.finished {
+            return false;
+        }
+
         if tandem_move.board <= 0 {
             return false;
         }
@@ -267,8 +283,6 @@ impl TandemGame {
         let rank = target.get_rank() as u8;
         let is_promotion = piece_source == Piece::Pawn && (rank == 0 || rank == 7);
 
-        println!("Is Promotion: {}", is_promotion);
-
         let promotion_target_op = Square::from_string(tandem_move.promotion.clone());
         let mut promotion_piece_op = None;
 
@@ -325,6 +339,10 @@ impl TandemGame {
         println!("{:?} {:?}", source, target);
         self.games[b_ind].change_turn();
         self.games[b_ind].board = board.make_move_new(chess_move);
+
+        if is_mate(&self.games[b_ind].board, piece_source, target, tandem_move.color) {
+            self.finished = true;
+        }
 
         true
     }
