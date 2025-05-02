@@ -50,7 +50,7 @@ impl ChessGame {
 
     pub fn should_update(&mut self) -> bool {
         let old_time_sum = self.last_time_sum;
-        self.last_time_sum = self.white_time / 60 + self.black_time / 60;
+        self.last_time_sum = self.white_time / 1_000 + self.black_time / 1_000;
 
         old_time_sum != self.last_time_sum
     }
