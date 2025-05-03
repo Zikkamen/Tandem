@@ -50,7 +50,8 @@ impl ChessGame {
 
     pub fn should_update(&mut self) -> bool {
         let old_time_sum = self.last_time_sum;
-        self.last_time_sum = self.white_time / 1_000 + self.black_time / 1_000;
+        self.last_time_sum = (self.white_time + 999) / 1_000 
+            + (self.black_time + 999) / 1_000;
 
         old_time_sum != self.last_time_sum
     }
@@ -75,8 +76,8 @@ impl ChessGame {
     }
 
     pub fn to_string(&self) -> String {
-        let time_white_seconds = self.white_time / 1000;
-        let time_black_seconds = self.black_time / 1000;
+        let time_white_seconds = (self.white_time + 999) / 1000;
+        let time_black_seconds = (self.black_time + 999) / 1000;
 
         json!({
             "fen": self.board.to_string(),
