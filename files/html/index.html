@@ -57,23 +57,16 @@
   var mainBoardData = null;
   var secondBoardData = null;
   var promotion_piece = null;
+  var lastFen1 = null;
+  var lastFen2 = null;
 
-  function update_boards() {
-    mainBoard.position(mainBoardData["fen"], false);
-    secondBoard.position(secondBoardData["fen"], false);
-
-    let spare_main_white = mainBoardData["white_sp"];
+  function update_timings() {
     let time_main_white = mainBoardData["white_time"];
-    let spare_main_black = mainBoardData["black_sp"];
     let time_main_black = mainBoardData["black_time"];
-    let spare_second_white = secondBoardData["white_sp"];
     let time_second_white = secondBoardData["white_time"];
-    let spare_second_black = secondBoardData["black_sp"];
     let time_second_black = secondBoardData["black_time"];
 
-    let spare_pieces_main = document.getElementById("mainBoard").getElementsByClassName("spare-piece-count");
     let timings_main = document.getElementById("divMainBoard").getElementsByClassName("timings");
-    let spare_pieces_seco = document.getElementById("secondBoard").getElementsByClassName("spare-piece-count");
     let timings_second = document.getElementById("divSecondBoard").getElementsByClassName("timings");
 
     if(color == 'W') {
@@ -81,15 +74,41 @@
       timings_main[1].innerText = time_main_white;
       timings_second[0].innerText = time_second_white;
       timings_second[1].innerText = time_second_black;
-      update_spare_pieces(spare_pieces_main, spare_main_black, spare_main_white);
-      update_spare_pieces(spare_pieces_seco, spare_second_white, spare_second_black);
     } else {
       timings_main[0].innerText = time_main_white;
       timings_main[1].innerText = time_main_black;
       timings_second[0].innerText = time_second_black;
       timings_second[1].innerText = time_second_white;
+    }
+  }
+
+  function update_boards() {
+    update_timings();
+
+    let spare_main_white = mainBoardData["white_sp"];
+    let spare_main_black = mainBoardData["black_sp"];
+    let spare_second_white = secondBoardData["white_sp"];
+    let spare_second_black = secondBoardData["black_sp"];
+
+    let spare_pieces_main = document.getElementById("mainBoard").getElementsByClassName("spare-piece-count");
+    let spare_pieces_seco = document.getElementById("secondBoard").getElementsByClassName("spare-piece-count");
+
+    if(color == 'W') {
+      update_spare_pieces(spare_pieces_main, spare_main_black, spare_main_white);
+      update_spare_pieces(spare_pieces_seco, spare_second_white, spare_second_black);
+    } else {
       update_spare_pieces(spare_pieces_main, spare_main_white, spare_main_black);
       update_spare_pieces(spare_pieces_seco, spare_second_black, spare_second_white);
+    }
+
+    if(lastFen1 != mainBoardData["fen"]) {
+      mainBoard.position(mainBoardData["fen"], false);
+      lastFen1 = mainBoardData["fen"];
+    }
+
+    if(lastFen2 != secondBoardData["fen"]) {
+      secondBoard.position(secondBoardData["fen"], false);
+      lastFen2 = secondBoardData["fen"];
     }
   }
 
@@ -175,6 +194,8 @@
   };
 
   function onDrop(source, target, piece, newPos, oldPos, orientation) {
+    lastFen1 = null;
+
     if(source != target) {
       socket.send(board + ';' + color + ';' + source + ';' + target + ';' + piece + ';' + promotion_piece);
     }
