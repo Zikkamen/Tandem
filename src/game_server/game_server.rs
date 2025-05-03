@@ -105,6 +105,15 @@ impl ChessGame {
         sp_array[i] += 1;
     }
 
+    pub fn add_pawn(&mut self, color: &Color) {
+        let mut sp_array = match color {
+            Color::White => &mut self.white_sp,
+            _ => &mut self.black_sp,
+        };
+
+        sp_array[4] += 1;
+    }
+
     pub fn decrease_count(&mut self, color: &Color, piece: Piece) -> bool {
         let mut sp_array = match color {
             Color::White => &mut self.white_sp,
@@ -198,7 +207,6 @@ impl TandemGame {
 
     pub fn move_piece(&mut self, tandem_move: &TandemMove) -> bool {
         println!("{:?}", tandem_move);
-        self.started = true;
         self.synchronize_time();
 
         if self.finished {
@@ -280,6 +288,7 @@ impl TandemGame {
             self.games[b_ind].board = board_new;
             self.games[b_ind].change_turn();
 
+            self.started = true;
             return true;
         }
 
@@ -340,6 +349,7 @@ impl TandemGame {
             };
 
             self.games[o_ind].board = board_other;
+            self.games[o_ind].add_pawn(&tandem_move.color);
         }
 
         match board.piece_on(target) {
@@ -355,6 +365,7 @@ impl TandemGame {
             self.finished = true;
         }
 
+        self.started = true;
         true
     }
 }
@@ -457,7 +468,11 @@ impl TandemMove {
             _ => Color::Black,
         };
 
-        let board = splitted[0].parse::<u8>().unwrap_or(1);
+        let board = splitted[0].parse::<u8>().unwrap_or(0);
+
+        if board != 1 && board != 2 {
+            return None;
+        }
 
         Some(TandemMove {
             board: board,

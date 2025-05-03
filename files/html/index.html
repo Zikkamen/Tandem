@@ -3,7 +3,7 @@
   .spare-piece-count {
     position: relative;
     display: inline;
-    font-size: 1.5em;
+    font-size: min(3vw, 3vh);
     bottom: 15px;
     right: 12px;
     background-color: white;
@@ -16,6 +16,7 @@
   .timings {
     margin-top: 0px;
     margin-bottom: 0px;
+    font-size: min(5vw, 5vh);
   }
 </style>
 <html lang="en">
@@ -31,14 +32,14 @@
       <button type="button" onclick="onPressColor('B1')">Black (Team2)</button>
       <h2 id="current_team_display" style="margin: 0 auto 0  auto; width: fit-content;"></h2>
       <div style="position:relative; display: flex; flex-direction: row; align-items: center; flex-wrap: wrap; margin: 0 auto 0 auto; width: 90%;">
-        <div id="divMainBoard" class="flexcontainer" style="position: relative; min-width: 400px; width: 40%;">
-          <p style="position: absolute; top: 3%; font-size: 2vw;" class="timings">5:00</p>
-          <p style="position: absolute; bottom: 3%; font-size: 2vw;" class="timings">5:00</p>
+        <div id="divMainBoard" class="flexcontainer" style="position: relative; min-width: 400px; width: 40%; max-width: 70vh;">
+          <p style="position: absolute; top: 3%;" class="timings">5:00</p>
+          <p style="position: absolute; bottom: 3%;" class="timings">5:00</p>
           <div id="mainBoard"></div>
         </div>
-        <div id="divSecondBoard" class="flexcontainer" style="position: relative; margin-left: 10px; min-width: 300px; width: 30%; height: fit-content;">
-          <p style="position: absolute; top: 2%; font-size: 2vw; float: left;" class="timings">5:00</p>
-          <p style="position: absolute; bottom: 2%; font-size: 2vw; float: left;" class="timings">5:00</p>
+        <div id="divSecondBoard" class="flexcontainer" style="position: relative; margin-left: 10px; min-width: 300px; width: 30%; max-width: 60vh; height: fit-content;">
+          <p style="position: absolute; top: 2%; float: left;" class="timings">5:00</p>
+          <p style="position: absolute; bottom: 2%; float: left;" class="timings">5:00</p>
           <div id="secondBoard"></div>
         </div>
       </div>
@@ -102,12 +103,7 @@
     }
   }
 
-  var last_event = null;
   socket.addEventListener("message", (event) => {
-    if(event.data == last_event) {
-      return;
-    }
-
     last_event = event.data;
 
     console.log(event.data);
