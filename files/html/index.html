@@ -61,6 +61,13 @@
   var promotion_piece = null;
   var lastFen1 = null;
   var lastFen2 = null;
+  var body = document.getElementById('body');
+  var preventScroll = function () {
+        body.style.overflow = 'hidden';
+    },
+    allowScroll = function () {
+      body.style.overflow = '';
+    };
 
   function update_timings() {
     let time_main_white = mainBoardData["white_time"];
@@ -142,6 +149,8 @@
   });
 
   function onDragStart1 (source, piece, position, orientation) {
+    preventScroll();
+
     if ((orientation === 'white' && piece.search(/^w/) === -1) ||
         (orientation === 'black' && piece.search(/^b/) === -1)) {
       return false
@@ -196,6 +205,7 @@
   };
 
   function onDrop(source, target, piece, newPos, oldPos, orientation) {
+    allowScroll();
     lastFen1 = null;
 
     if(source != target) {
