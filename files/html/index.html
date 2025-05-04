@@ -3,20 +3,23 @@
   .spare-piece-count {
     position: relative;
     display: inline;
-    font-size: min(1.5vw, 1.5vw);
+    font-size: 1.5vw;
     bottom: 15px;
     right: 12px;
     background-color: white;
     color: black;
   }
   .flexcontainer {
-    margin-left: auto; 
+    margin: auto;
+    float: left;
+    margin-left: auto;
     margin-right: auto;
+    max-width: fit-content;
+    padding: 10px;
   }
   .timings {
-    margin-top: 0px;
-    margin-bottom: 0px;
-    font-size: min(2vw, 2vw);
+    margin-top: 10px;
+    margin-bottom: 10px;
   }
 </style>
 <html lang="en">
@@ -31,13 +34,13 @@
       <button type="button" onclick="onPressColor('W2')">White (Team2)</button>
       <button type="button" onclick="onPressColor('B1')">Black (Team2)</button>
       <h2 id="current_team_display" style="margin: 0 auto 0  auto; width: fit-content;"></h2>
-      <div style="position:relative; display: flex; flex-direction: row; align-items: center; flex-wrap: wrap; margin: 0 auto 0 auto; width: 90%;">
-        <div id="divMainBoard" class="flexcontainer" style="position: relative; min-width: 400px; width: 40%; max-width: 70vh;">
+      <div style="position:relative; display: flex; flex-direction: row; flex-wrap: wrap; margin: 0 auto 0 auto; width: 90%; max-width: 140vh;">
+        <div id="divMainBoard" class="flexcontainer" style="position: relative; min-width: 400px; width: 50%; max-width: 70vh; font-size: 2.5vw;">
           <p style="position: absolute; top: 3%;" class="timings">5:00</p>
           <p style="position: absolute; bottom: 3%;" class="timings">5:00</p>
           <div id="mainBoard"></div>
         </div>
-        <div id="divSecondBoard" class="flexcontainer" style="position: relative; margin-left: 10px; min-width: 300px; width: 30%; max-width: 60vh; height: fit-content;">
+        <div id="divSecondBoard" class="flexcontainer" style="position: relative; min-width: 300px; width: 40%; max-width: 60vh; font-size: 2.0vw;">
           <p style="position: absolute; top: 2%; float: left;" class="timings">5:00</p>
           <p style="position: absolute; bottom: 2%; float: left;" class="timings">5:00</p>
           <div id="secondBoard"></div>
