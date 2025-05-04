@@ -1,12 +1,11 @@
 <!DOCTYPE html>
 <style>
-  .spare-piece-count {
+  .flexcontainer .spare-piece-count {
     position: relative;
     display: inline;
-    font-size: max(1.5vw, 1.5vh);
+    font-size: 2.0vh;
     bottom: 15px;
     right: 12px;
-    background-color: white;
     color: black;
   }
   .flexcontainer {
@@ -17,7 +16,7 @@
     max-width: fit-content;
     padding: 10px;
   }
-  .timings {
+  .flexcontainer .timings {
     margin-top: 10px;
     margin-bottom: 10px;
   }
@@ -35,12 +34,12 @@
       <button type="button" onclick="onPressColor('B1')">Black (Team2)</button>
       <h2 id="current_team_display" style="margin: 0 auto 0  auto; width: fit-content;"></h2>
       <div style="position:relative; display: flex; flex-direction: row; flex-wrap: wrap; margin: 0 auto 0 auto; width: 95%; max-width: 130vh;">
-        <div id="divMainBoard" class="flexcontainer" style="position: relative; min-width: 400px; width: 100%; max-width: 70vh; font-size: max(2.2vw, 4.0vh);">
+        <div id="divMainBoard" class="flexcontainer" style="position: relative; min-width: 400px; width: 100%; max-width: 70vh; font-size: min(4.0vh, 6.0vw);">
           <p style="position: absolute; top: 3%;" class="timings">5:00</p>
           <p style="position: absolute; bottom: 3%;" class="timings">5:00</p>
           <div id="mainBoard"></div>
         </div>
-        <div id="divSecondBoard" class="flexcontainer" style="position: relative; min-width: 300px; width: 50%; max-width: 50vh; font-size: max(1.5vw, 3.0vh);">
+        <div id="divSecondBoard" class="flexcontainer" style="position: relative; min-width: 300px; width: 50%; max-width: 50vh; font-size: min(3.0vh, 4.0vw);">
           <p style="position: absolute; top: 2%; float: left;" class="timings">5:00</p>
           <p style="position: absolute; bottom: 2%; float: left;" class="timings">5:00</p>
           <div id="secondBoard"></div>
