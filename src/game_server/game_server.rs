@@ -157,8 +157,9 @@ impl TandemGame {
         }
     }
 
-    pub fn get_fen(&self) -> String {
+    pub fn get_fen(&self, valid: bool) -> String {
         json!({
+            "valid": valid,
             "board_1": self.games[0].to_string(),
             "board_2": self.games[1].to_string(),
         }).to_string()
@@ -429,8 +430,8 @@ impl TandemGameInterface {
         }
     }
 
-    pub fn get_fen(&self) -> String {
-        self.board.read().unwrap().get_fen()
+    pub fn get_fen(&self, valid: bool) -> String {
+        self.board.read().unwrap().get_fen(valid)
     }
 
     pub fn should_update(&self) -> bool {
@@ -496,14 +497,19 @@ pub fn start_server() {
         let mut i = 0;
 
         thread::spawn(move || {
+            let mut ping_cnt = 0;
+    
             loop {
-                if tandem_sync.should_update() {
+                if tandem_sync.should_update() || ping_cnt >= 100 {
                     for client in client_sync_map.read().unwrap().values() {
-                        client.produce(tandem_sync.get_fen());
-                    } 
+                        client.produce(tandem_sync.get_fen(true));
+                    }
+
+                    ping_cnt = 0;
                 }
 
                 thread::sleep(Duration::from_millis(50));
+                ping_cnt += 1;
             }
         });
 
@@ -517,7 +523,10 @@ pub fn start_server() {
                 let stream_read = stream.unwrap();
                 let send_stream = stream_read.try_clone().unwrap();
 
-                let mut websocket_read = accept(stream_read).unwrap();
+                let mut websocket_read = match accept(stream_read) {
+                    Ok(v) => v,
+                    Err(_) => return,
+                };
                 let msg_queue = MessageQueue::<String>::new();
                 let msg_queue_c = msg_queue.clone();
                 let mut websocket_send = WebSocket::from_raw_socket(send_stream, Role::Server, None);
@@ -533,7 +542,7 @@ pub fn start_server() {
                     }
                 });
 
-                msg_queue.produce(board.get_fen());
+                msg_queue.produce(board.get_fen(true));
                 client_map_c.write().unwrap().insert(id, msg_queue.clone());
 
                 loop {
@@ -550,7 +559,7 @@ pub fn start_server() {
                         board.reset();
 
                         for client in client_map_c.read().unwrap().values() {
-                            client.produce(board.get_fen());
+                            client.produce(board.get_fen(true));
                         }
 
                         continue;
@@ -565,10 +574,10 @@ pub fn start_server() {
 
                     if changed {
                         for client in client_map_c.read().unwrap().values() {
-                            client.produce(board.get_fen());
+                            client.produce(board.get_fen(true));
                         }
                     } else {
-                        msg_queue.produce(board.get_fen());
+                        msg_queue.produce(board.get_fen(false));
                     }
                 }
             });

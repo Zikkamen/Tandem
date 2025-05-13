@@ -137,6 +137,10 @@
     console.log(event.data);
     let json = JSON.parse(event.data);
 
+    if(!json["valid"]) {
+      lastFen1 = null;
+    }
+
     if(board == '1') {
       mainBoardData = JSON.parse(json["board_1"]);
       secondBoardData = JSON.parse(json["board_2"]);
@@ -206,7 +210,6 @@
 
   function onDrop(source, target, piece, newPos, oldPos, orientation) {
     allowScroll();
-    lastFen1 = null;
 
     if(source != target) {
       socket.send(board + ';' + color + ';' + source + ';' + target + ';' + piece + ';' + promotion_piece);

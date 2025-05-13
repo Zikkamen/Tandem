@@ -49,7 +49,7 @@ impl<T> MessageQueue<T> {
             let message = match msg {
                 Some(v) => v,
                 None => {
-                    thread::sleep(Duration::from_micros(200));
+                    thread::sleep(Duration::from_millis(20));
 
                     continue;
                 }
