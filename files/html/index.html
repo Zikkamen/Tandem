@@ -52,6 +52,9 @@
 <script src="./files/js/chessboard-1.0.0.js"></script>
 <script>
   const socket = new WebSocket("ws://localhost:9091");
+
+  var move = new Audio('./files/sounds/Move.mp3');
+  var capture = new Audio('./files/sounds/Capture.mp3');
   var mainBoard = null;
   var secondBoard = null;
   var color = 'W';
@@ -111,6 +114,12 @@
     }
 
     if(lastFen1 != mainBoardData["fen"]) {
+      if(mainBoardData["last_move_capture"] == true) {
+        capture.play();
+      } else {
+        move.play();
+      }
+
       mainBoard.position(mainBoardData["fen"], false);
       lastFen1 = mainBoardData["fen"];
     }
@@ -132,9 +141,6 @@
   }
 
   socket.addEventListener("message", (event) => {
-    last_event = event.data;
-
-    console.log(event.data);
     let json = JSON.parse(event.data);
 
     if(!json["valid"]) {

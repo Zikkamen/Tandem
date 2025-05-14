@@ -28,6 +28,7 @@ pub struct ChessGame {
     white_time: i64,
     black_time: i64,
     turn: Color,
+    last_move_capture: bool,
     last_time_sum: i64,
 }
 
@@ -40,8 +41,13 @@ impl ChessGame {
             white_time: FIVE_MINUTES,
             black_time: FIVE_MINUTES,
             turn: Color::White,
+            last_move_capture: false,
             last_time_sum: 0,
         }
+    }
+
+    pub fn last_move_capture(&mut self, capture: bool) {
+        self.last_move_capture = capture;
     }
 
     pub fn flagged(&self) -> bool {
@@ -81,6 +87,7 @@ impl ChessGame {
 
         json!({
             "fen": self.board.to_string(),
+            "last_move_capture": self.last_move_capture,
             "white_sp": self.white_sp,
             "black_sp": self.black_sp,
             "white_time": format!("{}:{:02}", time_white_seconds / 60, time_white_seconds % 60),
@@ -355,8 +362,11 @@ impl TandemGame {
         }
 
         match board.piece_on(target) {
-            Some(v) => self.games[o_ind].add_piece(&tandem_move.color, v),
-            None => (),
+            Some(v) => {
+                self.games[o_ind].add_piece(&tandem_move.color, v);
+                self.games[b_ind].last_move_capture(true);
+            },
+            None => self.games[b_ind].last_move_capture(false),
         };
 
         println!("{:?} {:?}", source, target);
