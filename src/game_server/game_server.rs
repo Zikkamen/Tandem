@@ -423,7 +423,7 @@ fn is_mate(board: &Board, piece: Piece, target: Square, color: Color) -> bool {
     let king_x = square_king.get_rank() as i32;
     let king_y = square_king.get_file() as i32;
 
-    let close_chess = (king_x - target_x).abs().min((king_y - target_y).abs()) <= 1;
+    let close_chess = (king_x - target_x).abs().max((king_y - target_y).abs()) <= 1;
 
     board.status() == BoardStatus::Checkmate && (close_chess || piece == Piece::Knight)
 }
