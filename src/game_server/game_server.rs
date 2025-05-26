@@ -4,7 +4,6 @@ use std::{
     collections::{HashMap, HashSet},
     net::{TcpStream, TcpListener},
     time::{Duration, SystemTime},
-    ops::AddAssign,
 };
 
 use tungstenite::{
@@ -30,6 +29,7 @@ pub struct ChessGame {
     turn: Color,
     last_move_capture: bool,
     last_time_sum: i64,
+    last_move: String,
 }
 
 impl ChessGame {
@@ -43,6 +43,7 @@ impl ChessGame {
             turn: Color::White,
             last_move_capture: false,
             last_time_sum: 0,
+            last_move: String::new(),
         }
     }
 
@@ -72,12 +73,13 @@ impl ChessGame {
         self.black_time = self.black_time.max(0);
     }
 
-    pub fn change_turn(&mut self) {
+    pub fn change_turn(&mut self, chess_move: String) {
         self.turn = match self.turn {
             Color::White => Color::Black,
             _ => Color::White,
         };
 
+        self.last_move = chess_move;
         let _ = self.should_update();
     }
 
@@ -92,6 +94,7 @@ impl ChessGame {
             "black_sp": self.black_sp,
             "white_time": format!("{}:{:02}", time_white_seconds / 60, time_white_seconds % 60),
             "black_time": format!("{}:{:02}", time_black_seconds / 60, time_black_seconds % 60),
+            "last_move": self.last_move,
         }).to_string()
     }
 
@@ -295,7 +298,7 @@ impl TandemGame {
             }
 
             self.games[b_ind].board = board_new;
-            self.games[b_ind].change_turn();
+            self.games[b_ind].change_turn(tandem_move.source.clone() + "-" + &tandem_move.target);
 
             self.started = true;
             return true;
@@ -370,7 +373,7 @@ impl TandemGame {
         };
 
         println!("{:?} {:?}", source, target);
-        self.games[b_ind].change_turn();
+        self.games[b_ind].change_turn(tandem_move.source.clone() + "-" + &tandem_move.target);
         self.games[b_ind].board = board.make_move_new(chess_move);
 
         if is_mate(&self.games[b_ind].board, piece_source, target, tandem_move.color) {

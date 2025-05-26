@@ -56,6 +56,8 @@
   var move = new Audio('./files/sounds/Move.mp3');
   var capture = new Audio('./files/sounds/Capture.mp3');
   var mainBoard = null;
+  var $mainBoard = $('#mainBoard');
+  var $secondBoard = $('#secondBoard');
   var secondBoard = null;
   var color = 'W';
   var board = '1';
@@ -66,7 +68,7 @@
   var lastFen2 = null;
   var body = document.getElementById('body');
   var preventScroll = function () {
-        body.style.overflow = 'hidden';
+      body.style.overflow = 'hidden';
     },
     allowScroll = function () {
       body.style.overflow = '';
@@ -94,7 +96,7 @@
     }
   }
 
-  function update_boards() {
+  function update_boards(force) {
     update_timings();
 
     let spare_main_white = mainBoardData["white_sp"];
@@ -113,7 +115,14 @@
       update_spare_pieces(spare_pieces_seco, spare_second_black, spare_second_white);
     }
 
-    if(lastFen1 != mainBoardData["fen"]) {
+    if(lastFen1 != mainBoardData["fen"] || force) {
+      let splitMove = mainBoardData["last_move"].split('-');
+
+      console.log($mainBoard.find('.square-' + splitMove[0]));
+      $mainBoard.find('.' + 'square-55d63').removeClass('highlight2-9c5d2');
+      $mainBoard.find('.square-' + splitMove[0]).addClass('highlight2-9c5d2');
+      $mainBoard.find('.square-' + splitMove[1]).addClass('highlight2-9c5d2');
+
       if(mainBoardData["last_move_capture"] == true) {
         capture.play();
       } else {
@@ -155,7 +164,7 @@
       secondBoardData = JSON.parse(json["board_1"]);
     }
 
-    update_boards();
+    update_boards(false);
   });
 
   function onDragStart1 (source, piece, position, orientation) {
@@ -168,6 +177,8 @@
   }
 
   function onDragStart2 (source, piece, position, orientation) {
+    $secondBoard.find('.' + 'square-55d63').removeClass('highlight2-9c5d2');
+    $secondBoard.find('.square-' + source).addClass('highlight2-9c5d2');
     console.log("Promotion Piece selected", promotion_piece);
     promotion_piece = source;
 
@@ -207,7 +218,7 @@
       secondBoard.orientation('white');
     }
 
-    update_boards();
+    update_boards(true);
   }
 
   function resetGame() {
