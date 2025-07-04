@@ -24,20 +24,6 @@ impl<T> MessageQueue<T> {
         message_queue.push_back(message);
     }
 
-    pub fn consume_all(&mut self) -> Vec<T> {
-        let mut output = Vec::<T>::new();
-        let mut message_queue = self.message_queue.write().unwrap();
-
-        loop {
-            match message_queue.pop_front() {
-                Some(v) => output.push(v),
-                None => break,
-            };
-        }
-
-        output
-    }
-
     pub fn consume(&self) -> Option<T> {
         self.message_queue.write().unwrap().pop_front()
     }

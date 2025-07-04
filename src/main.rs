@@ -1,29 +1,20 @@
 mod game_server;
 
 use std::fs;
-use std::thread;
 
 use axum::{
-    extract::{Path, State},
+    extract::Path,
     response::{Html, Response},
     routing::get,
     Router, http::StatusCode,
     body::Body,
 };
 
-#[derive(Clone)]
-struct AppState {
-    data_store: String,
-}
-
 #[tokio::main]
 async fn main() {
     let app = Router::new()
         .route("/", get(index))
-        .route("/files/{object}/{file_name}", get(return_file))
-        .with_state(AppState {
-            data_store: String::new(),
-        });
+        .route("/files/{object}/{file_name}", get(return_file));
 
     game_server::game_server::start_server();
 
