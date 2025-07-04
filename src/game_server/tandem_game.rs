@@ -1,7 +1,8 @@
 use std::{
     sync::{Arc, RwLock},
+    ops::BitAnd,
 };
-use chess::{Board, Square, ChessMove, Piece, Color, Rank, BoardStatus, BoardBuilder};
+use chess::{Board, Square, ChessMove, Piece, Color, Rank, BoardStatus, BoardBuilder, BitBoard};
 
 use serde_json::json;
 use chrono::Utc;
@@ -248,13 +249,15 @@ impl TandemGame {
 
             println!("Checking Promotion valid");
 
+            let bit_board = other_board.pinned();
+            let square_board = BitBoard::from_square(promotion_target);
+
+            if bit_board.bitand(square_board).popcnt() > 0 {
+                return false;
+            }
+
             let board_other = match other_board.clear_square(promotion_target) {
                 Some(v) => v,
-                None => return false,
-            };
-
-            match board_other.null_move() {
-                Some(_) => (),
                 None => return false,
             };
 
